@@ -9,7 +9,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Role } from '@/lib/access';
 import type { Presence } from '@/lib/documents';
 import { HistoryPanel } from './HistoryPanel';
-import { LogoMark } from './Logo';
+import { Dialog } from './Dialog';
+import { Icon, type IconName } from './Icon';
 import { PresenceAvatars } from './PresenceAvatars';
 import { SharePanel } from './SharePanel';
 import { Toolbar } from './Toolbar';
@@ -36,8 +37,8 @@ const STATUS_TEXT: Record<SaveState, string> = {
   saved: 'All changes saved',
   dirty: 'Unsaved changes…',
   saving: 'Saving…',
-  error: 'Save failed. Will retry on your next edit.',
-  conflict: 'Not saved: newer version exists',
+  error: 'Not saved',
+  conflict: 'Not saved',
 };
 
 const STATUS_DOT: Record<SaveState, string> = {
@@ -67,7 +68,8 @@ export function DocumentEditor({ doc, userName }: Props) {
   const [state, setState] = useState<SaveState>('saved');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'share' | 'history' | null>(null);
+  const [panel, setPanel] = useState<'share' | 'history' | 'delete' | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [others, setOthers] = useState<Presence[]>([]);
   const [remoteEditor, setRemoteEditor] = useState<string | null>(null); // someone saved while we had unsaved edits
   const [lastEditedBy, setLastEditedBy] = useState(doc.updated_by_name);
@@ -298,11 +300,13 @@ export function DocumentEditor({ doc, userName }: Props) {
   }
 
   async function deleteDoc() {
-    if (!window.confirm(`Delete "${title}" for everyone? This cannot be undone.`)) return;
-    const res = await fetch(`/api/documents/${doc.id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? 'Delete failed.');
+    setDeleting(true);
+    const res = await fetch(`/api/documents/${doc.id}`, { method: 'DELETE' }).catch(() => null);
+    if (!res?.ok) {
+      const body = (await res?.json().catch(() => ({}))) ?? {};
+      setDeleting(false);
+      setPanel(null);
+      setError(body.error ?? 'Could not delete the document. Try again.');
       return;
     }
     router.push('/');
@@ -327,39 +331,36 @@ export function DocumentEditor({ doc, userName }: Props) {
     }
   }
 
-  const banner =
-    accessLost
-      ? { text: 'You no longer have access to this document.', action: null }
-      : roleChangedTo
+  const banner: { text: string; action: string | null; tone: 'error' | 'warning' } | null = accessLost
+    ? { text: 'You no longer have access to this document.', action: null, tone: 'error' }
+    : roleChangedTo
+      ? {
+          text:
+            roleChangedTo === 'viewer'
+              ? 'The owner changed your access to view only, so editing is off.'
+              : 'The owner gave you edit access. Reload to start editing.',
+          action: roleChangedTo === 'viewer' ? null : 'Reload',
+          tone: 'warning',
+        }
+      : remoteEditor
         ? {
-            text:
-              roleChangedTo === 'viewer'
-                ? 'The owner changed your access to view-only. Editing is disabled.'
-                : `The owner changed your access to ${roleChangedTo}. Reload to start editing.`,
+            text: `${remoteEditor} saved a newer version while you were typing. Reload to see it. Your unsaved changes here will be lost.`,
             action: 'Reload',
-          }
-        : remoteEditor
-        ? {
-            text: `${remoteEditor} saved a newer version while you were editing. Reload to get it (your unsaved changes here will be lost).`,
-            action: 'Reload',
+            tone: 'warning',
           }
         : error
-          ? { text: error, action: state === 'conflict' ? 'Reload' : null }
+          ? { text: error, action: state === 'conflict' ? 'Reload' : null, tone: 'error' }
           : null;
 
+  const canEditNow = editable && !accessLost && roleChangedTo !== 'viewer';
+  const statusLabel = canEditNow ? STATUS_TEXT[state] : 'View only';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
-          <Link
-            href="/"
-            onClick={leaveEditor}
-            aria-label="Back to documents"
-            title="Back to documents"
-            className="flex items-center gap-1 rounded-md p-1 text-gray-600 hover:bg-gray-100"
-          >
-            <span aria-hidden>←</span>
-            <LogoMark className="size-7" />
+    <div className="min-h-screen bg-white sm:bg-canvas">
+      <header className="top-0 z-10 border-b border-line bg-white [@media(min-height:600px)]:sticky">
+        <div className="flex items-center gap-1 px-2 py-1.5 sm:gap-2 sm:px-3">
+          <Link href="/" onClick={leaveEditor} aria-label="Back to documents" title="Back to documents" className="icon-btn">
+            <Icon name="back" />
           </Link>
           <input
             value={title}
@@ -370,65 +371,51 @@ export function DocumentEditor({ doc, userName }: Props) {
             onBlur={() => {
               if (!title.trim()) setTitle(savedTitle.current); // an empty title is never saved
             }}
-            readOnly={!editable}
+            readOnly={!canEditNow}
             maxLength={200}
             aria-label="Document title"
-            className="min-w-40 flex-1 rounded px-2 py-1 text-lg font-medium hover:bg-gray-50 focus:bg-white focus:outline focus:outline-blue-300"
+            className="h-9 min-w-0 flex-1 truncate rounded-lg px-2 text-base font-semibold hover:bg-gray-100 focus:bg-white read-only:hover:bg-transparent"
           />
-          <span className="flex items-center gap-1.5 text-xs text-gray-600" aria-live="polite">
-            <span aria-hidden className={`size-2 rounded-full ${editable ? STATUS_DOT[state] : 'bg-gray-400'}`} />
-            {editable ? STATUS_TEXT[state] : 'View only'}
+          <span className="flex shrink-0 items-center gap-1.5 px-1 text-xs text-muted" aria-live="polite">
+            <span aria-hidden className={`size-2 rounded-full ${canEditNow ? STATUS_DOT[state] : 'bg-gray-400'}`} />
+            <span className={canEditNow && state === 'saved' ? 'max-sm:sr-only' : ''}>{statusLabel}</span>
           </span>
           {doc.role !== 'owner' && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-              Shared by {doc.owner_name} · {doc.role}
+            <span className="hidden shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 md:inline">
+              Shared by {doc.owner_name}
             </span>
           )}
           <PresenceAvatars people={others} />
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPanel('history')}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-            >
-              History
-            </button>
-            <a
-              href={`/api/documents/${doc.id}/export`}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
-              title="Download as Markdown"
-            >
-              Export .md
-            </a>
-            {doc.role === 'owner' && (
-              <button
-                type="button"
-                onClick={deleteDoc}
-                className="rounded border border-gray-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50"
-              >
-                Delete
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setPanel('share')}
-              className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              {doc.role === 'owner' ? 'Share' : 'Access'}
-            </button>
-          </div>
+          <MoreMenu
+            items={[
+              { label: 'Version history', icon: 'history', onSelect: () => setPanel('history') },
+              { label: 'Export as Markdown', icon: 'download', href: `/api/documents/${doc.id}/export` },
+              ...(doc.role === 'owner'
+                ? [{ label: 'Delete document', icon: 'trash' as const, danger: true, onSelect: () => setPanel('delete') }]
+                : []),
+            ]}
+          />
+          <button
+            type="button"
+            onClick={() => setPanel('share')}
+            className={`btn ${doc.role === 'owner' ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            {doc.role === 'owner' ? 'Share' : 'Access'}
+          </button>
         </div>
-        {editable && editor && !accessLost && roleChangedTo !== 'viewer' && <Toolbar editor={editor} onError={setError} />}
+        {canEditNow && editor && <Toolbar editor={editor} onError={setError} />}
       </header>
 
       {banner && (
         <div
           role="alert"
-          className="mx-auto mt-4 flex max-w-3xl items-center justify-between gap-4 rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
+          className={`mx-3 mt-3 flex max-w-3xl items-center justify-between gap-4 rounded-lg px-4 py-2.5 text-sm sm:mx-auto ${
+            banner.tone === 'error' ? 'bg-red-50 text-red-900' : 'bg-amber-50 text-amber-900'
+          }`}
         >
           <span>{banner.text}</span>
           {banner.action && (
-            <button className="shrink-0 font-medium underline" onClick={() => window.location.reload()}>
+            <button type="button" className="btn btn-secondary" onClick={() => window.location.reload()}>
               {banner.action}
             </button>
           )}
@@ -437,13 +424,14 @@ export function DocumentEditor({ doc, userName }: Props) {
       {notice && (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg"
+          className="fixed bottom-6 left-1/2 z-20 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg bg-ink px-4 py-2.5 text-sm text-white"
         >
           {notice}
         </div>
       )}
 
-      <main className="mx-auto my-6 max-w-3xl rounded-lg bg-white px-6 py-8 shadow-sm ring-1 ring-gray-200 sm:px-12 sm:py-10">
+      {/* The page: full-bleed on phones, a hairline sheet on the canvas from tablet up. */}
+      <main className="mx-auto w-full max-w-3xl bg-white px-5 py-8 sm:my-6 sm:w-[calc(100%-3rem)] sm:rounded-xl sm:px-14 sm:py-12 sm:ring-1 sm:ring-line">
         {editor ? (
           <EditorContent editor={editor} />
         ) : (
@@ -455,26 +443,127 @@ export function DocumentEditor({ doc, userName }: Props) {
           </div>
         )}
       </main>
-      <footer className="mx-auto mb-8 flex max-w-3xl justify-between px-4 text-xs text-gray-600">
+      <footer className="mx-auto flex max-w-3xl justify-between gap-4 px-5 pb-8 text-xs text-muted sm:w-[calc(100%-3rem)] sm:px-2">
         {editor ? <WordCount editor={editor} /> : <span />}
-        <span>
-          {[lastEditedBy && `Last edited by ${lastEditedBy === userName ? 'you' : lastEditedBy}`, editable && 'Ctrl+S saves now']
-            .filter(Boolean)
-            .join(' · ')}
-        </span>
+        {lastEditedBy && <span>Last edited by {lastEditedBy === userName ? 'you' : lastEditedBy}</span>}
       </footer>
 
-      {panel === 'share' && (
-        <SharePanel docId={doc.id} isOwner={doc.role === 'owner'} onClose={() => setPanel(null)} />
-      )}
+      {panel === 'share' && <SharePanel docId={doc.id} isOwner={doc.role === 'owner'} onClose={() => setPanel(null)} />}
       {panel === 'history' && (
         <HistoryPanel
           docId={doc.id}
-          canRestore={editable && !accessLost}
-          restoreBlockedReason={state === 'saved' ? null : 'Wait for your changes to save first.'}
+          canRestore={canEditNow}
+          restoreBlockedReason={state === 'saved' ? null : 'Your changes are still saving.'}
           onRestore={restore}
           onClose={() => setPanel(null)}
         />
+      )}
+      {panel === 'delete' && (
+        <Dialog title="Delete this document?" onClose={() => setPanel(null)}>
+          <p className="text-sm text-muted">
+            <span className="font-medium text-ink">{title}</span> will be deleted for you and everyone it is shared with.
+            This cannot be undone.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" data-autofocus className="btn btn-secondary" onClick={() => setPanel(null)}>
+              Cancel
+            </button>
+            <button type="button" disabled={deleting} className="btn btn-danger" onClick={deleteDoc}>
+              {deleting ? 'Deleting…' : 'Delete document'}
+            </button>
+          </div>
+        </Dialog>
+      )}
+    </div>
+  );
+}
+
+type MenuItem = { label: string; icon: IconName; danger?: boolean; href?: string; onSelect?: () => void };
+
+/** Overflow menu for secondary document actions, with standard menu keyboard behavior. */
+function MoreMenu({ items }: { items: MenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    menu.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus();
+    const onDown = (e: MouseEvent) => {
+      if (!menu.current?.contains(e.target as Node) && !trigger.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    const els = [...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? [])];
+    const i = els.indexOf(document.activeElement as HTMLElement);
+    const focusAt = (n: number) => {
+      e.preventDefault();
+      els[(n + els.length) % els.length]?.focus();
+    };
+    if (e.key === 'ArrowDown') focusAt(i + 1);
+    else if (e.key === 'ArrowUp') focusAt(i - 1);
+    else if (e.key === 'Home') focusAt(0);
+    else if (e.key === 'End') focusAt(els.length - 1);
+    else if (e.key === 'Escape') {
+      setOpen(false);
+      trigger.current?.focus();
+    } else if (e.key === 'Tab') setOpen(false);
+  }
+
+  const itemClass = (danger?: boolean) =>
+    `flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-left text-sm hover:bg-gray-100 focus-visible:bg-gray-100 ${
+      danger ? 'text-danger' : 'text-ink'
+    }`;
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={trigger}
+        type="button"
+        aria-label="More actions"
+        title="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="icon-btn"
+      >
+        <Icon name="more" />
+      </button>
+      {open && (
+        <div
+          ref={menu}
+          role="menu"
+          aria-label="More actions"
+          onKeyDown={onKeyDown}
+          className="surface absolute top-full right-0 z-30 mt-1 w-56 p-1 shadow-lg"
+        >
+          {items.map((it) =>
+            it.href ? (
+              <a key={it.label} role="menuitem" href={it.href} onClick={() => setOpen(false)} className={itemClass(it.danger)}>
+                <Icon name={it.icon} />
+                {it.label}
+              </a>
+            ) : (
+              <button
+                key={it.label}
+                type="button"
+                role="menuitem"
+                className={itemClass(it.danger)}
+                onClick={() => {
+                  setOpen(false);
+                  trigger.current?.focus(); // so the dialog this opens returns focus here
+                  it.onSelect?.();
+                }}
+              >
+                <Icon name={it.icon} />
+                {it.label}
+              </button>
+            ),
+          )}
+        </div>
       )}
     </div>
   );

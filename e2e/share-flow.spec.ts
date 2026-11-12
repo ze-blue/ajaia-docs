@@ -19,13 +19,13 @@ test('owner shares a document; viewer is read-only and sees live updates; upgrad
   const alice = await signInAs(browser, 'Alice Johnson');
 
   // Create, rename and format.
-  await alice.getByRole('button', { name: '+ New document' }).click();
+  await alice.getByRole('button', { name: 'New document' }).click();
   await alice.waitForURL(/\/docs\//);
   const docUrl = alice.url();
   await alice.getByLabel('Document title').fill(title);
   const editor = alice.getByLabel('Document content');
   await editor.click();
-  await alice.getByRole('button', { name: 'Heading 1' }).click();
+  await alice.getByLabel('Text style').selectOption('1');
   await alice.keyboard.type('Launch plan');
   await alice.keyboard.press('Enter');
   await alice.keyboard.press('Control+B');
@@ -97,7 +97,23 @@ test('owner shares a document; viewer is read-only and sees live updates; upgrad
   await expect(carol.getByText('Document unavailable')).toBeVisible();
 
   // Clean up: the owner deletes the document.
-  alice.once('dialog', (d) => d.accept());
-  await alice.getByRole('button', { name: 'Delete' }).click();
+  // Keyboard path: the overflow menu opens on its first item, arrows move, and the confirm
+  // dialog starts on Cancel (the safe choice), traps focus, and returns it on Escape.
+  const more = alice.getByRole('button', { name: 'More actions' });
+  await more.focus();
+  await alice.keyboard.press('Enter');
+  await expect(alice.getByRole('menuitem', { name: 'Version history' })).toBeFocused();
+  await alice.keyboard.press('End');
+  await expect(alice.getByRole('menuitem', { name: 'Delete document' })).toBeFocused();
+  await alice.keyboard.press('Enter');
+  const confirm = alice.getByRole('dialog', { name: 'Delete this document?' });
+  await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await alice.keyboard.press('Escape');
+  await expect(confirm).toHaveCount(0);
+  await expect(more).toBeFocused();
+
+  await more.click();
+  await alice.getByRole('menuitem', { name: 'Delete document' }).click();
+  await confirm.getByRole('button', { name: 'Delete document' }).click();
   await alice.waitForURL((u) => u.pathname === '/');
 });
