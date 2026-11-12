@@ -5,12 +5,13 @@
 | Item | Where |
 |---|---|
 | Live app | https://ajaia-docs-ten-gamma.vercel.app |
+| Google Drive folder | https://drive.google.com/drive/folders/10AOK9jEaGCHIp8a0W9oKBZEQDxqzFAWP |
 | Source code | This folder (also on GitHub: https://github.com/ze-blue/ajaia-docs) |
 | Setup and run instructions | [README.md](README.md) |
 | Architecture note | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | AI workflow note | [AI_WORKFLOW.md](AI_WORKFLOW.md) |
 | Design notes | [DESIGN.md](DESIGN.md), with before and after screenshots in [screenshots/design-audit/](screenshots/design-audit/) |
-| Walkthrough video URL | [VIDEO_URL.txt](VIDEO_URL.txt) |
+| Walkthrough video URL | https://drive.google.com/file/d/1g-Y6uXVncH95LwWAcda7QNc8ImqTAQ31/view?usp=drivesdk |
 | Screenshots | [screenshots/](screenshots/) |
 | Sample files for import testing | [samples/](samples/) (`.docx`, `.md`, `.txt`) |
 | Automated tests | [tests/](tests/) (`npm test`), [e2e/](e2e/) (`npm run test:e2e`), CI in [.github/workflows/](.github/workflows/) |
