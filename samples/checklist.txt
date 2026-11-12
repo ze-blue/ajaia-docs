@@ -1,0 +1,6 @@
+Release checklist
+
+Run the test suite.
+Deploy to staging.
+
+Announce in #general once production is green.

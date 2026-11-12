@@ -1,0 +1,21 @@
+import { Pool } from 'pg';
+
+// Reuse one pool across hot reloads in dev and across invocations on a warm serverless instance.
+const g = globalThis as unknown as { pgPool?: Pool };
+
+function createPool() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set. See README → Local setup.');
+  }
+  return new Pool({ connectionString: process.env.DATABASE_URL, max: 3 });
+}
+
+export function getPool(): Pool {
+  if (!g.pgPool) g.pgPool = createPool();
+  return g.pgPool;
+}
+
+export async function q<T = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<T[]> {
+  const result = await getPool().query(text, params);
+  return result.rows as T[];
+}
