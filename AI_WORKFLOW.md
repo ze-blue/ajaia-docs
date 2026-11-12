@@ -1,12 +1,16 @@
 # AI workflow note
 
-## Tools used
+## Tools used, and why each one
 
-| Tool | Used for |
-|---|---|
-| **Claude (Fable 5.2, chat)** | First pass at scope: stack, cuts, time plan, schema sketch |
-| **Claude Code (Opus 5.5) in VS Code** | Implementation, running commands, tests, and browser verification in my workspace |
-| **Chrome DevTools MCP** (driven by Claude Code) | Clicking through the real UI as two users at once, in isolated browser sessions |
+I split the work between two models on purpose: one to plan, one to build and verify.
+
+| Tool | Role | Why this tool for this job |
+|---|---|---|
+| **Claude Fable 5.2** | Planning: scope cut, stack, schema sketch, time budget | Strong reasoning on an open-ended brief. I wanted a plan to critique before any code existed. |
+| **Claude Code (Opus 5.5) in VS Code** | Building: implementation, running commands, tests, deploys | Works directly in the repo and terminal, so it can run what it writes and see real errors. |
+| **Chrome DevTools MCP** (driven by Claude Code) | Verification: clicking through the real UI as Alice and Bob in isolated browser sessions, on localhost and in production | Tests the product as a user would, not just the code. |
+
+**My loop for each piece of work:** plan, then review the plan myself, then build a vertical slice, then check it with tests and a real browser, then commit. Nothing counted as done until it had been seen working.
 
 ## Where AI materially sped things up
 
