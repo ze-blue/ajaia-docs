@@ -5,7 +5,7 @@
 | Item | Where |
 |---|---|
 | Live app | https://ajaia-docs-ten-gamma.vercel.app |
-| Source code | This folder (also on GitHub: _REPO_URL_) |
+| Source code | This folder (also on GitHub: https://github.com/ze-blue/ajaia-docs) |
 | Setup and run instructions | [README.md](README.md) |
 | Architecture note | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | AI workflow note | [AI_WORKFLOW.md](AI_WORKFLOW.md) |
