@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import type { Revision } from '@/lib/documents';
+import { Dialog } from './Dialog';
+import { Icon } from './Icon';
 import { LocalTime } from './LocalTime';
 import { ReadOnlyContent } from './ReadOnlyContent';
 
@@ -41,7 +43,7 @@ export function HistoryPanel({ docId, canRestore, restoreBlockedReason, onRestor
     fetch(`/api/documents/${docId}/revisions/${selected}`)
       .then(async (r) => {
         const body = await r.json();
-        if (!r.ok) throw new Error(body.error ?? 'Could not load revision.');
+        if (!r.ok) throw new Error(body.error ?? 'Could not load this version.');
         if (!cancelled) setPreview({ id: selected, html: body.content });
       })
       .catch((e: Error) => !cancelled && setError(e.message));
@@ -50,67 +52,76 @@ export function HistoryPanel({ docId, canRestore, restoreBlockedReason, onRestor
     };
   }, [docId, selected]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const isLatest = selected !== null && revisions?.[0]?.id === selected;
 
   return (
-    <aside
-      aria-label="Version history"
-      className="fixed inset-y-0 right-0 z-30 flex w-full max-w-2xl flex-col border-l border-gray-200 bg-white shadow-2xl"
-    >
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-        <h2 className="font-semibold">Version history</h2>
-        <button onClick={onClose} className="rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-100" aria-label="Close history">
-          ✕
-        </button>
-      </div>
-
+    <Dialog title="Version history" variant="drawer" onClose={onClose}>
       <div className="flex min-h-0 flex-1">
-        <ul className="w-56 shrink-0 overflow-y-auto border-r border-gray-100 py-2 text-sm">
-          {revisions === null && !error && <li className="px-4 py-2 text-gray-500">Loading…</li>}
+        {/* On phones the list and the preview are separate steps; side by side from sm up. */}
+        <ul
+          className={`w-full shrink-0 overflow-y-auto py-2 sm:block sm:w-60 sm:border-r sm:border-line ${selected ? 'hidden' : ''}`}
+        >
+          {revisions === null && !error && (
+            <li className="animate-pulse space-y-2 px-5 py-3" role="status" aria-label="Loading versions">
+              <span className="block h-3 w-32 rounded bg-gray-200" />
+              <span className="block h-3 w-20 rounded bg-gray-100" />
+            </li>
+          )}
           {revisions?.map((r, i) => (
             <li key={r.id}>
               <button
+                type="button"
                 onClick={() => setSelected(r.id)}
                 aria-current={selected === r.id}
-                className={`block w-full px-4 py-2 text-left hover:bg-gray-50 ${selected === r.id ? 'bg-blue-50' : ''}`}
+                className={`block w-full border-l-2 px-5 py-2.5 text-left text-sm transition-colors hover:bg-gray-50 ${
+                  selected === r.id ? 'border-accent bg-accent-soft' : 'border-transparent'
+                }`}
               >
-                <span className="block font-medium text-gray-900">
+                <span className="block font-medium">
                   <LocalTime iso={new Date(r.updated_at).toISOString()} />
                 </span>
-                <span className="block text-xs text-gray-500">
+                <span className="block text-xs text-muted">
                   {r.author_name}
-                  {i === 0 && ' · current'}
+                  {i === 0 && ' · Current version'}
                 </span>
               </button>
             </li>
           ))}
         </ul>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className={`min-w-0 flex-1 flex-col sm:flex ${selected ? 'flex' : 'hidden'}`}>
+          {selected && (
+            <button type="button" onClick={() => setSelected(null)} className="btn btn-quiet m-2 self-start sm:hidden">
+              <Icon name="back" /> All versions
+            </button>
+          )}
           {error && (
-            <p role="alert" className="m-4 text-sm text-red-700">
+            <p role="alert" className="m-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-danger">
               {error}
             </p>
           )}
-          {!preview && !error && (
-            <p className="m-6 text-sm text-gray-500">
-              Select a version to preview it. A new version is recorded when a different person edits, or after a minute of
-              editing.
-            </p>
+          {!selected && !error && (
+            <p className="m-auto max-w-xs p-6 text-center text-sm text-muted">Choose a version to preview it.</p>
           )}
-          {preview && (
+          {selected && !error && (!preview || preview.id !== selected) && (
+            <div className="animate-pulse space-y-4 px-8 py-6" role="status" aria-label="Loading version">
+              <div className="h-7 w-2/3 rounded bg-gray-200" />
+              <div className="h-4 w-full rounded bg-gray-100" />
+              <div className="h-4 w-5/6 rounded bg-gray-100" />
+            </div>
+          )}
+          {preview && preview.id === selected && (
             <>
-              <ReadOnlyContent key={preview.id} html={preview.html} className="flex-1 overflow-y-auto px-8 py-6" />
+              <ReadOnlyContent key={preview.id} html={preview.html} className="flex-1 overflow-y-auto px-5 py-4 sm:px-8 sm:py-6" />
               {canRestore && (
-                <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-5 py-3">
-                  {restoreBlockedReason && <span className="text-xs text-gray-500">{restoreBlockedReason}</span>}
+                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line px-5 py-3">
+                  {(restoreBlockedReason || isLatest) && (
+                    <span className="text-xs text-muted">
+                      {isLatest ? 'This is the current version.' : restoreBlockedReason}
+                    </span>
+                  )}
                   <button
+                    type="button"
                     disabled={busy || isLatest || restoreBlockedReason !== null}
                     onClick={async () => {
                       setBusy(true);
@@ -124,9 +135,9 @@ export function HistoryPanel({ docId, canRestore, restoreBlockedReason, onRestor
                         setBusy(false);
                       }
                     }}
-                    className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="btn btn-primary"
                   >
-                    {isLatest ? 'This is the current version' : busy ? 'Restoring…' : 'Restore this version'}
+                    {busy ? 'Restoring…' : 'Restore this version'}
                   </button>
                 </div>
               )}
@@ -134,6 +145,6 @@ export function HistoryPanel({ docId, canRestore, restoreBlockedReason, onRestor
           )}
         </div>
       </div>
-    </aside>
+    </Dialog>
   );
 }
