@@ -28,13 +28,13 @@ No passwords. Pick a user on the sign-in page.
 
 **Working end to end (verified in production):**
 - **Documents:** create, rename, edit and autosave; Ctrl+S; delete with confirmation; word count
-- **Rich text:** bold, italic, underline, H1–H3, bulleted and numbered lists, quote, undo/redo. Formatting is preserved on reopen.
-- **File upload:** import `.txt`, `.md` or `.docx` (max 2 MB) as a new document. Unsupported files are rejected with a clear message.
+- **Rich text:** bold, italic, underline, strikethrough, code, links, H1–H3, bulleted and numbered lists, quote, divider, undo/redo; keyboard shortcut help. Formatting is preserved on reopen.
+- **File upload:** import `.txt`, `.md` or `.docx` (max 2 MB) as a new document (button or drag-and-drop), or insert a file's content into the current document. Unsupported files are rejected with a clear message.
 - **Sharing:** by email as editor or viewer; change roles; remove access. Separate "My documents" and "Shared with me" lists; read-only viewer mode.
 - **Collaboration:** presence avatars; collaborators' saves pulled in automatically; conflict warnings instead of silent overwrites; role changes and revoked access applied without a reload.
 - **Version history:** preview and restore (stretch goal)
 - **Export to Markdown** (stretch goal)
-- **Quality:** validation and error messages on every endpoint; 22 unit and integration tests; a Playwright browser test with three users; CI
+- **Quality:** validation and error messages on every endpoint; 28 unit and integration tests; a Playwright browser test with three users; CI; Lighthouse accessibility, best practices and SEO all 100 on mobile
 
 **Partial or not included:**
 - No character-level real-time co-editing. Changes sync as whole saves every few seconds rather than letter by letter, and simultaneous edits to the same document are detected (409) rather than merged.

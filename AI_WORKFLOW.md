@@ -18,7 +18,8 @@ I gave different AI roles different jobs, and kept the decisions for myself.
 - **Planning in minutes.** A first scope cut, data model and time budget came back right away. I spent my time judging the plan, not drafting it.
 - **Boilerplate and glue:** the Tiptap toolbar, route handlers, zod validation and the file-conversion pipeline. These are well-known patterns where AI is fast and reliable.
 - **Building the stretch features after the core was done:** presence, live updates and version history took about an hour, including tests, because the core design (versioned saves, access checks in one place) made them straightforward extensions.
-- **Tests at depth:** 22 unit and Postgres integration tests, plus a three-user Playwright test of the whole flow.
+- **Tests at depth:** 28 unit and Postgres integration tests, plus a three-user Playwright test of the whole flow.
+- **UI polish measured, not just eyeballed:** I ran Lighthouse before and after the UI pass. The editor's accessibility score went from 96 to 100 (it had flagged low-contrast footer text). Mobile layouts were checked at 390 px wide.
 - **Review at scale:** an independent reviewer read the whole codebase in about four minutes and returned ranked, traced findings.
 
 ## AI output I changed or rejected
@@ -56,7 +57,7 @@ The reviewer reported **no** access-control, XSS, CSRF or injection problems, wh
 
 ## How I verified correctness, UX and reliability
 
-- **Automated:** `npm test` runs 22 tests. They cover the access matrix, import and XSS stripping, size limits, and cookie tampering. **Integration tests against real Postgres** cover sharing, permission enforcement, conflicts, history coalescing, restore permissions, presence and revocation. A **Playwright test** runs three users through create, format, reload, share, read-only view, presence, live update, undo safety, upgrade, a blocked outsider and delete. It passes against the **deployed** app. CI runs lint, type-check, tests and build.
+- **Automated:** `npm test` runs 28 tests. They cover the access matrix, import and XSS stripping, size limits, and cookie tampering. **Integration tests against real Postgres** cover sharing, permission enforcement, conflicts, history coalescing, restore permissions, presence and revocation. A **Playwright test** runs three users through create, format, reload, share, read-only view, presence, live update, undo safety, upgrade, a blocked outsider and delete. It passes against the **deployed** app. CI runs lint, type-check, tests and build.
 - **API checks with curl:** bad file type returns 400, no session returns 401, a forged cookie returns 401, a viewer trying to save or reshare returns 403, a stale save returns 409.
 - **UX in a real browser:** screenshots of every key screen were reviewed. Save latency was measured at about 0.3 s in production.
 - **Rule I followed:** AI writes code, but nothing counts as done until a test, a curl call or a browser check shows it working, and a regression test only counts once it has been seen failing without the fix.

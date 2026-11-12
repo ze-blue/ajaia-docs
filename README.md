@@ -27,9 +27,9 @@ Open **two browser windows**: a normal one and a private/incognito one, so you c
 
 | Area | What works |
 |---|---|
-| Documents | Create, rename (inline title), edit, autosave (800 ms after you stop typing, or Ctrl+S), reopen, delete with confirmation (owner only), word count |
-| Formatting | Bold, italic, underline, H1–H3, bulleted and numbered lists, block quote, undo/redo, keyboard shortcuts |
-| File upload | **Import `.txt`, `.md`, `.docx` (max 2 MB)**, each becomes a new editable document titled after the file. Other types are rejected with a clear message. |
+| Documents | Create, rename (inline title), edit, autosave (800 ms after you stop typing, or Ctrl+S), reopen, delete with confirmation (owner only), word count. The list has **search**, a content preview, "edited 5 minutes ago by Bob", and share counts. |
+| Formatting | Bold, italic, underline, strikethrough, inline code, links, H1–H3, bulleted and numbered lists, quote, divider, clear formatting, undo/redo. Keyboard shortcuts with a built-in help panel (`?`), and Markdown-style shortcuts (`# `, `- `, `1. `). |
+| File upload | **`.txt`, `.md`, `.docx` (max 2 MB)** in two ways: **Import** (button or drag-and-drop on the home page) creates a new document titled after the file; **Insert from file** (editor toolbar) adds the file's content to the current document at the cursor. Other types are rejected with a clear message. |
 | Sharing | Owner shares by email as **editor** or **viewer**, changes a person's role, or removes access. Lists are split into **My documents** and **Shared with me**. |
 | Collaboration | **Presence avatars** show who else has the document open and whether they're viewing or editing. **Live updates:** viewers and editors with no unsaved changes receive others' saves automatically. Editors with unsaved changes get a warning instead of being overwritten. Role changes and revoked access take effect without a reload. |
 | Version history | Automatic snapshots: one per person per minute of editing, plus one whenever a different person edits. Preview any version and restore it. A restore is itself a version, so it can be undone. |
@@ -51,7 +51,7 @@ npm run dev                     # http://localhost:3000
 | Script | Purpose |
 |---|---|
 | `npm run dev` | Dev server |
-| `npm test` | 22 unit and Postgres integration tests (integration tests skip if `DATABASE_URL` is unset) |
+| `npm test` | 28 unit and Postgres integration tests (integration tests skip if `DATABASE_URL` is unset) |
 | `npm run test:e2e` | Playwright browser test of the full share flow with three users (starts the dev server; set `E2E_BASE_URL` to test a deployment) |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
 | `npm run build && npm start` | Production build |
