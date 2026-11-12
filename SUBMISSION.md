@@ -9,6 +9,7 @@
 | Setup and run instructions | [README.md](README.md) |
 | Architecture note | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | AI workflow note | [AI_WORKFLOW.md](AI_WORKFLOW.md) |
+| Design notes | [DESIGN.md](DESIGN.md), with before and after screenshots in [screenshots/design-audit/](screenshots/design-audit/) |
 | Walkthrough video URL | [VIDEO_URL.txt](VIDEO_URL.txt) |
 | Screenshots | [screenshots/](screenshots/) |
 | Sample files for import testing | [samples/](samples/) (`.docx`, `.md`, `.txt`) |

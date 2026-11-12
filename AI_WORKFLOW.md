@@ -19,6 +19,7 @@ I gave different AI roles different jobs, and kept the decisions for myself.
 - **Boilerplate and glue:** the Tiptap toolbar, route handlers, zod validation and the file-conversion pipeline. These are well-known patterns where AI is fast and reliable.
 - **Building the stretch features after the core was done:** presence, live updates and version history took about an hour, including tests, because the core design (versioned saves, access checks in one place) made them straightforward extensions.
 - **Tests at depth:** 28 unit and Postgres integration tests, plus a three-user Playwright test of the whole flow.
+- **A design audit with evidence:** I had the AI act as a product designer with a written baseline ([DESIGN.md](DESIGN.md)) and a script that screenshots every core screen at three widths and measures overflow, target sizes and focus handling. It found the share dialog let keyboard focus escape, a 25×18 px button, and icons that did not grow at 200% text size. The same script caught a regression in the AI's own redesign (new button styles silently not applied because the dev server served a stale stylesheet) before it shipped.
 - **UI polish measured, not just eyeballed:** I ran Lighthouse before and after the UI pass. The editor's accessibility score went from 96 to 100 (it had flagged low-contrast footer text). Mobile layouts were checked at 390 px wide.
 - **Review at scale:** an independent reviewer read the whole codebase in about four minutes and returned ranked, traced findings.
 

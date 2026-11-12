@@ -15,12 +15,12 @@ A lightweight collaborative document editor. You can create and format documents
 
 Open **two browser windows**: a normal one and a private/incognito one, so you can be two users at once.
 
-1. **Window 1, as Alice:** click **+ New document**, give it a title, and type some formatted text (toolbar or Ctrl+B/I/U). The header shows "All changes saved".
+1. **Window 1, as Alice:** click **New document**, give it a title, and type some formatted text (toolbar or Ctrl+B/I/U). The header shows "All changes saved".
 2. Click **Share**, enter `bob@example.com`, choose **Can view**, and click **Share**.
 3. **Window 2, as Bob:** the document is under **Shared with me**, labeled `Alice Johnson · viewer`. It opens read-only. Each window shows the other person's avatar.
 4. **Type in Alice's window.** Within a few seconds Bob's window updates on its own and shows "Updated with changes from Alice Johnson".
 5. As Alice, change Bob to **Editor**. Bob gets a banner asking him to reload, and then he can edit.
-6. Click **History** to preview earlier versions and restore one.
+6. Open the **⋯ menu → Version history** to preview earlier versions and restore one.
 7. Sign in as **Carol**: she can't open the document, even with its URL.
 
 ## Features
@@ -29,13 +29,14 @@ Open **two browser windows**: a normal one and a private/incognito one, so you c
 |---|---|
 | Documents | Create, rename (inline title), edit, autosave (800 ms after you stop typing, or Ctrl+S), reopen, delete with confirmation (owner only), word count. The list has **search**, a content preview, "edited 5 minutes ago by Bob", and share counts. |
 | Formatting | Bold, italic, underline, strikethrough, inline code, links, H1–H3, bulleted and numbered lists, quote, divider, clear formatting, undo/redo. Keyboard shortcuts with a built-in help panel (`?`), and Markdown-style shortcuts (`# `, `- `, `1. `). |
-| File upload | **`.txt`, `.md`, `.docx` (max 2 MB)** in two ways: **Import** (button or drag-and-drop on the home page) creates a new document titled after the file; **Insert from file** (editor toolbar) adds the file's content to the current document at the cursor. Other types are rejected with a clear message. |
+| File upload | **`.txt`, `.md`, `.docx` (max 2 MB)** in two ways: **Import** (button or drag-and-drop on the home page) creates a new document titled after the file; **Insert file** (editor toolbar) adds the file's content to the current document at the cursor. Other types are rejected with a clear message. |
 | Sharing | Owner shares by email as **editor** or **viewer**, changes a person's role, or removes access. Lists are split into **My documents** and **Shared with me**. |
 | Collaboration | **Presence avatars** show who else has the document open and whether they're viewing or editing. **Live updates:** viewers and editors with no unsaved changes receive others' saves automatically. Editors with unsaved changes get a warning instead of being overwritten. Role changes and revoked access take effect without a reload. |
 | Version history | Automatic snapshots: one per person per minute of editing, plus one whenever a different person edits. Preview any version and restore it. A restore is itself a version, so it can be undone. |
 | Persistence | Postgres (Neon). Content is stored as sanitized HTML, so formatting survives a reload. |
 | Safety | All access checks are done on the server, and users without access get a 404. HTML is sanitized on every write (blocks malicious scripts). The session cookie is HMAC-signed, so editing it can't impersonate another user. Stale saves return **409** instead of overwriting someone else's edits. Each save and its history entry are written in one database transaction. |
-| Extra | **Export to Markdown** (`Export .md`) |
+| Extra | **Export to Markdown** (⋯ menu) |
+| Design and accessibility | One design system ([DESIGN.md](DESIGN.md)). Works at phone, tablet and desktop widths and at 200% text size. Full keyboard support: dialogs trap and return focus, the menu uses arrow keys. Lighthouse accessibility 100. |
 
 ## Local setup
 
@@ -54,6 +55,7 @@ npm run dev                     # http://localhost:3000
 | `npm test` | 28 unit and Postgres integration tests (integration tests skip if `DATABASE_URL` is unset) |
 | `npm run test:e2e` | Playwright browser test of the full share flow with three users (starts the dev server; set `E2E_BASE_URL` to test a deployment) |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
+| `node scripts/design-audit.mjs <label>` | Screenshots at three widths plus overflow, target-size and focus checks |
 | `npm run build && npm start` | Production build |
 | `npm run db:seed-demo` | ⚠️ **Deletes all documents** and recreates a demo set (owned, shared as editor, shared as viewer, private) |
 
@@ -82,4 +84,4 @@ tests/                       vitest: access matrix, import + XSS, session signin
 e2e/                         Playwright: full multi-user share / presence / live-update flow
 ```
 
-More detail: [ARCHITECTURE.md](ARCHITECTURE.md) · [AI_WORKFLOW.md](AI_WORKFLOW.md) · [SUBMISSION.md](SUBMISSION.md)
+More detail: [ARCHITECTURE.md](ARCHITECTURE.md) · [DESIGN.md](DESIGN.md) · [AI_WORKFLOW.md](AI_WORKFLOW.md) · [SUBMISSION.md](SUBMISSION.md)
