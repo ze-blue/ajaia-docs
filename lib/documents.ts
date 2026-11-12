@@ -12,9 +12,24 @@ export type DocSummary = {
   id: string;
   title: string;
   updated_at: string;
+  owner_id: string;
   owner_name: string;
+  updated_by_name: string | null;
+  share_count: number;
+  snippet: string;
   role: Role;
 };
+
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ' };
+
+/** Plain-text preview from stored HTML (tags already stripped in SQL). */
+export function toSnippet(text: string, max = 140): string {
+  const plain = text
+    .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_, e: string) => ENTITIES[e])
+    .replace(/\s+/g, ' ')
+    .trim();
+  return plain.length > max ? `${plain.slice(0, max).trimEnd()}…` : plain;
+}
 
 export type Doc = {
   id: string;
@@ -42,16 +57,20 @@ export type Presence = { user_id: string; name: string; role: Role };
 export type Share = { user_id: string; name: string; email: string; role: ShareRole };
 
 export async function listDocuments(user: User): Promise<{ owned: DocSummary[]; shared: DocSummary[] }> {
-  const rows = await q<DocSummary>(
-    `select d.id, d.title, d.updated_at, u.name as owner_name,
-            case when d.owner_id = $1 then 'owner' else s.role end as role
+  const raw = await q<DocSummary>(
+    `select d.id, d.title, d.updated_at, d.owner_id, u.name as owner_name, ub.name as updated_by_name,
+            case when d.owner_id = $1 then 'owner' else s.role end as role,
+            (select count(*)::int from document_shares x where x.document_id = d.id) as share_count,
+            regexp_replace(left(d.content, 2000), '<[^>]*>', ' ', 'g') as snippet
        from documents d
        join users u on u.id = d.owner_id
+       left join users ub on ub.id = d.updated_by
        left join document_shares s on s.document_id = d.id and s.user_id = $1
       where d.owner_id = $1 or s.user_id = $1
       order by d.updated_at desc`,
     [user.id],
   );
+  const rows = raw.map((r) => ({ ...r, snippet: toSnippet(r.snippet) }));
   return {
     owned: rows.filter((r) => r.role === 'owner'),
     shared: rows.filter((r) => r.role !== 'owner'),

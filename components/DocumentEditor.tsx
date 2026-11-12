@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Role } from '@/lib/access';
 import type { Presence } from '@/lib/documents';
 import { HistoryPanel } from './HistoryPanel';
+import { LogoMark } from './Logo';
 import { PresenceAvatars } from './PresenceAvatars';
 import { SharePanel } from './SharePanel';
 import { Toolbar } from './Toolbar';
@@ -37,6 +38,14 @@ const STATUS_TEXT: Record<SaveState, string> = {
   saving: 'Saving…',
   error: 'Save failed. Will retry on your next edit.',
   conflict: 'Not saved: newer version exists',
+};
+
+const STATUS_DOT: Record<SaveState, string> = {
+  saved: 'bg-green-500',
+  dirty: 'bg-amber-400',
+  saving: 'bg-amber-400 animate-pulse',
+  error: 'bg-red-500',
+  conflict: 'bg-red-500',
 };
 
 function WordCount({ editor }: { editor: Editor }) {
@@ -249,7 +258,7 @@ export function DocumentEditor({ doc, userName }: Props) {
   // Ctrl/Cmd+S saves immediately instead of opening the browser's "Save page" dialog.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault();
         if (editable) saveNow();
       }
@@ -342,8 +351,15 @@ export function DocumentEditor({ doc, userName }: Props) {
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
-          <Link href="/" onClick={leaveEditor} className="text-sm text-blue-700 hover:underline" title="Back to documents">
-            ← Docs
+          <Link
+            href="/"
+            onClick={leaveEditor}
+            aria-label="Back to documents"
+            title="Back to documents"
+            className="flex items-center gap-1 rounded-md p-1 text-gray-600 hover:bg-gray-100"
+          >
+            <span aria-hidden>←</span>
+            <LogoMark className="size-7" />
           </Link>
           <input
             value={title}
@@ -359,7 +375,8 @@ export function DocumentEditor({ doc, userName }: Props) {
             aria-label="Document title"
             className="min-w-40 flex-1 rounded px-2 py-1 text-lg font-medium hover:bg-gray-50 focus:bg-white focus:outline focus:outline-blue-300"
           />
-          <span className="text-xs text-gray-500" aria-live="polite">
+          <span className="flex items-center gap-1.5 text-xs text-gray-600" aria-live="polite">
+            <span aria-hidden className={`size-2 rounded-full ${editable ? STATUS_DOT[state] : 'bg-gray-400'}`} />
             {editable ? STATUS_TEXT[state] : 'View only'}
           </span>
           {doc.role !== 'owner' && (
@@ -401,7 +418,7 @@ export function DocumentEditor({ doc, userName }: Props) {
             </button>
           </div>
         </div>
-        {editable && editor && !accessLost && roleChangedTo !== 'viewer' && <Toolbar editor={editor} />}
+        {editable && editor && !accessLost && roleChangedTo !== 'viewer' && <Toolbar editor={editor} onError={setError} />}
       </header>
 
       {banner && (
@@ -427,13 +444,23 @@ export function DocumentEditor({ doc, userName }: Props) {
       )}
 
       <main className="mx-auto my-6 max-w-3xl rounded-lg bg-white px-6 py-8 shadow-sm ring-1 ring-gray-200 sm:px-12 sm:py-10">
-        <EditorContent editor={editor} />
+        {editor ? (
+          <EditorContent editor={editor} />
+        ) : (
+          <div className="min-h-[60vh] animate-pulse space-y-4" aria-label="Loading document" role="status">
+            <div className="h-8 w-2/3 rounded bg-gray-200" />
+            <div className="h-4 w-full rounded bg-gray-100" />
+            <div className="h-4 w-5/6 rounded bg-gray-100" />
+            <div className="h-4 w-4/6 rounded bg-gray-100" />
+          </div>
+        )}
       </main>
-      <footer className="mx-auto mb-8 flex max-w-3xl justify-between px-2 text-xs text-gray-400">
+      <footer className="mx-auto mb-8 flex max-w-3xl justify-between px-4 text-xs text-gray-600">
         {editor ? <WordCount editor={editor} /> : <span />}
         <span>
-          {lastEditedBy && `Last edited by ${lastEditedBy}`}
-          {editable && ' · Ctrl+S saves now'}
+          {[lastEditedBy && `Last edited by ${lastEditedBy === userName ? 'you' : lastEditedBy}`, editable && 'Ctrl+S saves now']
+            .filter(Boolean)
+            .join(' · ')}
         </span>
       </footer>
 
