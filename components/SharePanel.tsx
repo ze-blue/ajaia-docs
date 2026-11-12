@@ -13,13 +13,21 @@ export function SharePanel({ docId, isOwner, onClose }: { docId: string; isOwner
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/documents/${docId}/shares`);
-    const body = await res.json();
-    if (res.ok) setShares(body.shares);
-    else setError(body.error);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error ?? 'Could not load sharing settings.');
+    return body.shares as Share[];
   }, [docId]);
 
+  const refresh = useCallback(() => load().then(setShares), [load]);
+
   useEffect(() => {
-    load();
+    let cancelled = false;
+    load()
+      .then((s) => !cancelled && setShares(s))
+      .catch((e: Error) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   useEffect(() => {
@@ -39,7 +47,7 @@ export function SharePanel({ docId, isOwner, onClose }: { docId: string; isOwner
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? 'Request failed');
-      await load();
+      await refresh();
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed');

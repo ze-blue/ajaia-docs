@@ -63,8 +63,16 @@ export async function getDocument(user: User, id: string): Promise<Doc> {
   if (!row) throw notFound();
   const role = resolveRole(row.owner_id, row.share_role, user.id);
   if (!role) throw notFound();
-  const { share_role: _ignored, ...doc } = row;
-  return { ...doc, role };
+  return {
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    version: row.version,
+    owner_id: row.owner_id,
+    owner_name: row.owner_name,
+    updated_at: row.updated_at,
+    role,
+  };
 }
 
 export async function createDocument(user: User, title?: string, content = ''): Promise<string> {

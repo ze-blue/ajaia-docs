@@ -30,38 +30,40 @@ export function DocumentEditor({ doc, userName }: Props) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlight = useRef(false);
 
+  // Sends pending changes one request at a time. Edits that arrive while a request is
+  // in flight are picked up by the next loop iteration, so saves never overlap or reorder.
   const flush = useCallback(async () => {
-    if (inFlight.current || Object.keys(pending.current).length === 0) return;
-    const patch = pending.current;
-    pending.current = {};
+    if (inFlight.current) return;
     inFlight.current = true;
-    setState('saving');
     try {
-      const res = await fetch(`/api/documents/${doc.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...patch, baseVersion: version.current }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.status === 409) {
-        setState('conflict');
-        setError(body.error);
-        return;
-      }
-      if (!res.ok) throw new Error(body.error ?? `Save failed (${res.status})`);
-      version.current = body.version;
-      setError(null);
-      // More edits may have arrived while this request was in flight.
-      if (Object.keys(pending.current).length > 0) {
-        inFlight.current = false;
-        return flush();
+      while (Object.keys(pending.current).length > 0) {
+        const patch = pending.current;
+        pending.current = {};
+        setState('saving');
+        try {
+          const res = await fetch(`/api/documents/${doc.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...patch, baseVersion: version.current }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (res.status === 409) {
+            setState('conflict');
+            setError(body.error);
+            return;
+          }
+          if (!res.ok) throw new Error(body.error ?? `Save failed (${res.status})`);
+          version.current = body.version;
+          setError(null);
+        } catch (e) {
+          // Put the unsaved changes back so the next attempt includes them.
+          pending.current = { ...patch, ...pending.current };
+          setState('error');
+          setError(e instanceof Error ? e.message : 'Save failed');
+          return;
+        }
       }
       setState('saved');
-    } catch (e) {
-      // Put the unsaved changes back so the next attempt includes them.
-      pending.current = { ...patch, ...pending.current };
-      setState('error');
-      setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       inFlight.current = false;
     }
