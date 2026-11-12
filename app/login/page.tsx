@@ -1,42 +1,42 @@
+import { AuthShell } from '@/components/AuthShell';
+import { SignInForm } from '@/components/AuthForms';
 import { Avatar } from '@/components/Avatar';
-import { LogoMark } from '@/components/Logo';
 import type { User } from '@/lib/auth';
 import { q } from '@/lib/db';
-import { login } from '../actions';
+import { demoSignIn } from '../actions';
+import { redirect } from 'next/navigation';
+import { currentUser } from '@/lib/auth';
+
+const DEMO_IDS = ['u_alice', 'u_bob', 'u_carol'];
 
 export default async function LoginPage() {
-  const users = await q<User>('select id, name, email from users order by name');
+  if (await currentUser()) redirect('/');
+  const demoUsers = await q<User>('select id, name, email from users where id = any($1) order by name', [DEMO_IDS]);
   return (
-    <main className="flex min-h-screen w-full items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2.5">
-          <LogoMark className="size-9" />
-          <h1 className="text-xl font-semibold tracking-tight">Ajaia Docs</h1>
-        </div>
+    <AuthShell title="Sign in">
+      <SignInForm />
 
-        <div className="surface p-5 sm:p-6">
-          <h2 className="font-semibold">Sign in as</h2>
-          <form action={login} className="mt-3 space-y-2">
-            {users.map((u) => (
-              <button
-                key={u.id}
-                name="uid"
-                value={u.id}
-                className="group flex w-full cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2.5 text-left transition-colors hover:border-accent hover:bg-accent-soft"
-              >
-                <Avatar id={u.id} name={u.name} />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{u.name}</span>
-                  <span className="block truncate text-xs text-muted">{u.email}</span>
-                </span>
-              </button>
-            ))}
-          </form>
-          <p className="mt-4 text-xs text-muted">
-            Demo accounts, no password. To try sharing, sign in as a second person in a private window.
-          </p>
-        </div>
+      <div className="mt-6 border-t border-line pt-5">
+        <h2 className="text-sm font-medium">Reviewing? Use a demo account</h2>
+        <p className="mt-1 text-xs text-muted">
+          One click, or sign in above with password <span className="font-mono text-ink">demo-password</span>. Use a
+          private window for a second person to try sharing.
+        </p>
+        <form action={demoSignIn} className="mt-3 grid gap-2 sm:grid-cols-3">
+          {demoUsers.map((u) => (
+            <button
+              key={u.id}
+              name="uid"
+              value={u.id}
+              aria-label={`Continue as ${u.name}`}
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-2.5 py-2 text-left text-sm transition-colors hover:border-accent hover:bg-accent-soft"
+            >
+              <Avatar id={u.id} name={u.name} size="sm" />
+              <span className="truncate font-medium">{u.name.split(' ')[0]}</span>
+            </button>
+          ))}
+        </form>
       </div>
-    </main>
+    </AuthShell>
   );
 }

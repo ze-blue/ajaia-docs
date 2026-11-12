@@ -319,7 +319,7 @@ export async function shareDocument(user: User, id: string, email: string, role:
   if (!canShare(doc.role)) throw forbidden('Only the owner can share this document.');
 
   const [target] = await q<{ id: string }>('select id from users where lower(email) = lower($1)', [email]);
-  if (!target) throw new AppError(404, `No user with email ${email}. Try one of the demo accounts.`);
+  if (!target) throw new AppError(404, `No account uses ${email}. Ask them to create one first, then share again.`);
   if (target.id === doc.owner_id) throw new AppError(400, 'The owner already has full access.');
 
   await q(

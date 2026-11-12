@@ -18,7 +18,7 @@ export default async function Home() {
           <form action={logout} className="flex min-w-0 items-center gap-2">
             <Avatar id={user.id} name={user.name} />
             <span className="hidden truncate text-sm font-medium sm:block">{user.name}</span>
-            <button className="btn btn-quiet">Switch account</button>
+            <button className="btn btn-quiet">Sign out</button>
           </form>
         </div>
       </header>

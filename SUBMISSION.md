@@ -17,7 +17,7 @@
 
 ## Test accounts
 
-No passwords. Pick a user on the sign-in page.
+Sign in with one click on the sign-in page, or with the email below and password `demo-password`. You can also create your own account.
 
 | User | Email |
 |---|---|
@@ -39,7 +39,7 @@ No passwords. Pick a user on the sign-in page.
 
 **Partial or not included:**
 - No character-level real-time co-editing. Changes sync as whole saves every few seconds rather than letter by letter, and simultaneous edits to the same document are detected (409) rather than merged.
-- Mock authentication only.
+- Accounts have no password reset, email verification or rate limiting.
 - No comments, attachments, images or tables.
 
 **Next 2–4 hours:** real-time co-editing with Yjs and live cursors, real authentication with share invites, comments, revision diffs. See [ARCHITECTURE.md](ARCHITECTURE.md#what-id-build-next-24-hours).

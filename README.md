@@ -3,7 +3,7 @@
 A lightweight collaborative document editor. You can create and format documents, import files, share them as editor or viewer, see who else is in a document, get collaborators' changes live, and restore earlier versions. Everything is saved to Postgres.
 
 **Live app:** https://ajaia-docs-ten-gamma.vercel.app
-**Demo accounts:** pick any of the three on the sign-in page (no password).
+**Accounts:** create your own with **Create an account**, or use a demo account: one click on the sign-in page, or sign in with the email below and password `demo-password`.
 
 | User | Email |
 |---|---|
@@ -33,6 +33,7 @@ Open **two browser windows**: a normal one and a private/incognito one, so you c
 | Sharing | Owner shares by email as **editor** or **viewer**, changes a person's role, or removes access. Lists are split into **My documents** and **Shared with me**. |
 | Collaboration | **Presence avatars** show who else has the document open and whether they're viewing or editing. **Live updates:** viewers and editors with no unsaved changes receive others' saves automatically. Editors with unsaved changes get a warning instead of being overwritten. Role changes and revoked access take effect without a reload. |
 | Version history | Automatic snapshots: one per person per minute of editing, plus one whenever a different person edits. Preview any version and restore it. A restore is itself a version, so it can be undone. |
+| Accounts | Sign up with name, email and password; sign in and out. Passwords are hashed with scrypt; sessions are signed cookies that expire after 7 days. Failed sign-in gives one message for any failure, so it doesn't reveal which emails have accounts. One-click sign-in is limited to the three demo accounts. |
 | Persistence | Postgres (Neon). Content is stored as sanitized HTML, so formatting survives a reload. |
 | Safety | All access checks are done on the server, and users without access get a 404. HTML is sanitized on every write (blocks malicious scripts). The session cookie is HMAC-signed, so editing it can't impersonate another user. Stale saves return **409** instead of overwriting someone else's edits. Each save and its history entry are written in one database transaction. |
 | Extra | **Export to Markdown** (⋯ menu) |
@@ -78,7 +79,8 @@ lib/
   documents.ts               data access; every function enforces access itself
   import-file.ts             .txt / .md / .docx → HTML
   sanitize.ts                HTML allowlist applied on every write
-  session.ts, auth.ts        signed-cookie mock auth
+  accounts.ts, password.ts   sign-up / sign-in, scrypt password hashing
+  session.ts, auth.ts        signed, expiring session cookie
 scripts/schema.sql           idempotent schema + seed users
 tests/                       vitest: access matrix, import + XSS, session signing, Postgres integration
 e2e/                         Playwright: full multi-user share / presence / live-update flow
