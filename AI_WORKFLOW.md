@@ -2,38 +2,61 @@
 
 ## Tools used, and why each one
 
-I split the work between two models on purpose: one to plan, one to build and verify.
+I gave different AI roles different jobs, and kept the decisions for myself.
 
 | Tool | Role | Why this tool for this job |
 |---|---|---|
-| **Claude Fable 5.2** | Planning: scope cut, stack, schema sketch, time budget | Strong reasoning on an open-ended brief. I wanted a plan to critique before any code existed. |
-| **Claude Code (Opus 5.5) in VS Code** | Building: implementation, running commands, tests, deploys | Works directly in the repo and terminal, so it can run what it writes and see real errors. |
-| **Chrome DevTools MCP** (driven by Claude Code) | Verification: clicking through the real UI as Alice and Bob in isolated browser sessions, on localhost and in production | Tests the product as a user would, not just the code. |
+| **Claude Fable 5.2** | **Planner:** scope cut, stack, schema sketch, time budget | Strong reasoning on an open-ended brief. I wanted a plan to critique before any code existed. |
+| **Claude Code (Opus 5.5) in VS Code** | **Builder:** implementation, commands, tests, deploys | Works in the repo and terminal, so it runs what it writes and sees real errors. |
+| **A separate Claude Code review agent** | **Reviewer:** an independent code review with no access to the builder's reasoning | A reviewer who didn't write the code isn't anchored on the author's assumptions. |
+| **Chrome DevTools MCP + Playwright** | **Verifier:** the real UI as Alice, Bob and Carol in isolated sessions, locally and in production | Tests the product as users experience it, not just the functions. |
 
-**My loop for each piece of work:** plan, then review the plan myself, then build a vertical slice, then check it with tests and a real browser, then commit. Nothing counted as done until it had been seen working.
+**My loop for each piece of work:** plan, then review the plan myself, then build a vertical slice, then check it with tests and a real browser, then commit and deploy. Nothing counted as done until it had been seen working, and the deployed app was retested after every change.
 
 ## Where AI materially sped things up
 
 - **Planning in minutes.** A first scope cut, data model and time budget came back right away. I spent my time judging the plan, not drafting it.
 - **Boilerplate and glue:** the Tiptap toolbar, route handlers, zod validation and the file-conversion pipeline. These are well-known patterns where AI is fast and reliable.
-- **Tests.** The permissions matrix and the Postgres integration test (share → viewer blocked → upgrade to editor → revoke → stale save gets 409) were written in one pass and run against the real database.
-- **Verification at scale.** Claude Code drove a real browser as Alice and as Bob in separate sessions, uploaded a `.docx`, and checked that the content survived a reload. Doing that by hand after every change would have cost far more time.
+- **Building the stretch features after the core was done:** presence, live updates and version history took about an hour, including tests, because the core design (versioned saves, access checks in one place) made them straightforward extensions.
+- **Tests at depth:** 22 unit and Postgres integration tests, plus a three-user Playwright test of the whole flow.
+- **Review at scale:** an independent reviewer read the whole codebase in about four minutes and returned ranked, traced findings.
 
 ## AI output I changed or rejected
 
+**From the plan:**
+
 | What the AI proposed | What I did and why |
 |---|---|
-| The first plan (chat) stored the user ID in a **plain cookie** | Rejected. Anyone could edit the cookie and become another user, which makes the sharing demo meaningless. I switched to an **HMAC-signed** cookie (`lib/session.ts`) with a tamper test. |
-| The first plan saved and rendered HTML **without sanitization** | Added an allowlist sanitizer on every write, plus an XSS test (`<script>`, `onerror`, `javascript:` links). |
-| The first plan pinned **Tiptap v2** | Used v3, the current major version, which includes underline in StarterKit. |
-| The first plan used **last-write-wins** saves | Added a `version` column and 409 conflicts so concurrent edits are never silently lost. |
-| Generated page code didn't account for **Next.js 16 Cache Components** (enabled by the scaffold), which caused a blocking-route error | Checked the docs bundled with the installed Next.js version instead of relying on the model's memory, then added `loading.tsx` Suspense boundaries. |
-| The generated autosave used a **recursive callback** and setState inside an effect, and the linter flagged both | Rewrote autosave as a loop that sends one request at a time, and moved data loading to an effect with cancellation. |
-| During testing, the AI reported a **"save bug"** (edits didn't persist) | Before changing any code, I confirmed with curl and a direct database query that saving worked. The cause was a reload that cut off the first save while the dev server was still compiling. The unsaved-changes warning had correctly fired. No code change needed. |
+| Store the user ID in a **plain cookie** | Rejected. Anyone could edit the cookie and become another user, which makes the sharing demo meaningless. I switched to an **HMAC-signed** cookie with a tamper test. |
+| Save and render HTML **without sanitization** | Added an allowlist sanitizer on every write, plus an XSS test. Stored HTML is only displayed through Tiptap's schema; when a security hook flagged an `innerHTML` preview, I replaced it. |
+| Pin **Tiptap v2** | Used v3, the current major version. |
+| **Last-write-wins** saves | Added a `version` column and 409 conflicts, which later became the foundation for live updates and history. |
+
+**From the builder:**
+
+| Issue | What I did |
+|---|---|
+| Page code didn't account for **Next.js 16 Cache Components** (a blocking-route error) | Checked the docs bundled with the installed Next.js version instead of trusting the model's memory, then added `loading.tsx` boundaries. |
+| Autosave used a recursive callback and setState inside an effect (lint errors) | Rewrote autosave as a loop that sends one request at a time. |
+| The AI reported a **"save bug"** during testing | Before changing any code, I checked with curl and a direct database query. Saving worked: my reload had cut off the first, slow save while the dev server was compiling. No change needed. |
+| An end-to-end test failed on a **"lost space"** | I traced it to the test, not the app: Tiptap 3 always keeps an empty paragraph at the end, so Ctrl+End typed into a new paragraph. I fixed the test, not the product. |
+
+**From the independent reviewer:** 9 findings. I checked each against the code, and all held up. Fixed:
+
+| Finding | Severity | Fix |
+|---|---|---|
+| After a live update, **Ctrl+Z undid the collaborator's change** and autosave wrote that over their work | High | Pulled content is kept out of undo history. I **proved the regression test catches it** by temporarily putting the old code back and watching the test fail, then restoring the fix. |
+| A restore could overwrite the latest history entry | Medium | Restores always create a new revision. Regression test added. |
+| The heartbeat could mistake your own in-flight save for someone else's (a false "reload" banner that never cleared) | Medium | Skip the version check during your own saves, and clear the banner on a successful save. |
+| The document update and its history entry were not atomic | Medium | Both are now written in one transaction. |
+| A large import could create a document that could never be saved again | Medium | Size is checked after conversion, returning 413. Test added. |
+| Typing during a restore, leaving via in-app links, mid-session role changes, clearing the title | Low | Fixed each one: discard edits that were based on the replaced content, save or confirm before leaving, disable editing on downgrade, reset to the last saved title. |
+
+The reviewer reported **no** access-control, XSS, CSRF or injection problems, which matched my own security checks.
 
 ## How I verified correctness, UX and reliability
 
-- **Automated:** `npm test` runs 19 tests: the access matrix, import conversion and XSS stripping, size and type limits, cookie tamper rejection, and **integration tests against real Postgres** for sharing, permissions, persistence and conflicts. `npm run lint`, `typecheck` and `build` all pass.
-- **Manual and scripted API checks with curl:** unsupported file type returns 400, no session returns 401, a forged cookie returns 401, and a viewer trying to save returns 403.
-- **In the browser:** formatting (H1, bold, lists) survives a reload. The viewer sees a read-only document with a "Shared by Alice · viewer" badge. `.docx` import keeps headings, bold and lists.
-- **Rule I followed:** AI writes code, but nothing counts as done until a test, a curl call or a browser check shows it working. Every claim in the README was demonstrated at least once.
+- **Automated:** `npm test` runs 22 tests. They cover the access matrix, import and XSS stripping, size limits, and cookie tampering. **Integration tests against real Postgres** cover sharing, permission enforcement, conflicts, history coalescing, restore permissions, presence and revocation. A **Playwright test** runs three users through create, format, reload, share, read-only view, presence, live update, undo safety, upgrade, a blocked outsider and delete. It passes against the **deployed** app. CI runs lint, type-check, tests and build.
+- **API checks with curl:** bad file type returns 400, no session returns 401, a forged cookie returns 401, a viewer trying to save or reshare returns 403, a stale save returns 409.
+- **UX in a real browser:** screenshots of every key screen were reviewed. Save latency was measured at about 0.3 s in production.
+- **Rule I followed:** AI writes code, but nothing counts as done until a test, a curl call or a browser check shows it working, and a regression test only counts once it has been seen failing without the fix.

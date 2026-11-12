@@ -12,7 +12,7 @@
 | Walkthrough video URL | [VIDEO_URL.txt](VIDEO_URL.txt) |
 | Screenshots | [screenshots/](screenshots/) |
 | Sample files for import testing | [samples/](samples/) (`.docx`, `.md`, `.txt`) |
-| Automated tests | [tests/](tests/), run with `npm test` |
+| Automated tests | [tests/](tests/) (`npm test`), [e2e/](e2e/) (`npm run test:e2e`), CI in [.github/workflows/](.github/workflows/) |
 
 ## Test accounts
 
@@ -26,8 +26,19 @@ No passwords. Pick a user on the sign-in page.
 
 ## Status
 
-**Working end to end:** create, rename, edit and autosave documents; rich text (bold, italic, underline, H1–H3, bulleted and numbered lists, quote); reopen with formatting preserved; import `.txt`/`.md`/`.docx` as a new document; share by email as editor or viewer; change roles and remove access; separate "My documents" and "Shared with me" lists; read-only viewer mode; conflict detection on stale saves; Markdown export; validation and error messages; 19 automated tests; live deployment.
+**Working end to end (verified in production):**
+- **Documents:** create, rename, edit and autosave; Ctrl+S; delete with confirmation; word count
+- **Rich text:** bold, italic, underline, H1–H3, bulleted and numbered lists, quote, undo/redo. Formatting is preserved on reopen.
+- **File upload:** import `.txt`, `.md` or `.docx` (max 2 MB) as a new document. Unsupported files are rejected with a clear message.
+- **Sharing:** by email as editor or viewer; change roles; remove access. Separate "My documents" and "Shared with me" lists; read-only viewer mode.
+- **Collaboration:** presence avatars; collaborators' saves pulled in automatically; conflict warnings instead of silent overwrites; role changes and revoked access applied without a reload.
+- **Version history:** preview and restore (stretch goal)
+- **Export to Markdown** (stretch goal)
+- **Quality:** validation and error messages on every endpoint; 22 unit and integration tests; a Playwright browser test with three users; CI
 
-**Partial or not included:** no real-time co-editing (concurrent edits are detected with a 409 and the user is asked to reload, but changes are not merged); mock authentication only; no delete button in the UI (the API exists and is tested); no attachments, images or tables.
+**Partial or not included:**
+- No character-level real-time co-editing. Changes sync as whole saves every few seconds rather than letter by letter, and simultaneous edits to the same document are detected (409) rather than merged.
+- Mock authentication only.
+- No comments, attachments, images or tables.
 
-**Next 2–4 hours:** version history and restore, real-time co-editing with Yjs and presence, real authentication with share invites, Playwright end-to-end tests. See [ARCHITECTURE.md](ARCHITECTURE.md#what-id-build-next-24-hours).
+**Next 2–4 hours:** real-time co-editing with Yjs and live cursors, real authentication with share invites, comments, revision diffs. See [ARCHITECTURE.md](ARCHITECTURE.md#what-id-build-next-24-hours).
