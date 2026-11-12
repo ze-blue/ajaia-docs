@@ -1,0 +1,160 @@
+[
+ {
+  "page": "login",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "home",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "desktop",
+  "focusTrapHolds": true,
+  "focusReturns": true
+ },
+ {
+  "page": "more-menu",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "history",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor-zoom200",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "home-zoom200",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "login",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "home",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "tablet",
+  "focusTrapHolds": true,
+  "focusReturns": true
+ },
+ {
+  "page": "more-menu",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "history",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "login",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "home",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "phone",
+  "focusTrapHolds": true,
+  "focusReturns": true
+ },
+ {
+  "page": "more-menu",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "history",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ }
+]
