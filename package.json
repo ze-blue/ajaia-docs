@@ -9,7 +9,8 @@
     "lint": "eslint",
     "db:setup": "node --env-file=.env.local scripts/setup.mjs",
     "test": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:seed-demo": "node --env-file=.env.local scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@tiptap/pm": "^3.33.1",

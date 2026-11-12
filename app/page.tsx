@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { HomeActions } from '@/components/HomeActions';
+import { LocalTime } from '@/components/LocalTime';
 import { requirePageUser } from '@/lib/auth';
 import { type DocSummary, listDocuments } from '@/lib/documents';
 import { logout } from './actions';
@@ -18,9 +19,7 @@ function DocList({ docs, empty, shared }: { docs: DocSummary[]; empty: string; s
                   {d.owner_name} · {d.role}
                 </span>
               )}
-              <time dateTime={new Date(d.updated_at).toISOString()}>
-                {new Date(d.updated_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-              </time>
+              <LocalTime iso={new Date(d.updated_at).toISOString()} />
             </span>
           </Link>
         </li>
