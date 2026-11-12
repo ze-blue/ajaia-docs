@@ -1,21 +1,76 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Design tokens. See DESIGN.md for the reasoning behind each. */
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-canvas: #f7f7f8; /* app background: recedes behind the page */
+  --color-ink: #111827; /* primary text */
+  --color-muted: #4b5563; /* secondary text, 7:1 on white */
+  --color-line: #e5e7eb; /* hairlines; the only separator we use */
+  --color-accent: #2563eb; /* one accent: primary action, selection, focus */
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #eff6ff;
+  --color-danger: #b91c1c;
 }
 
 body {
-  background: #f9fafb;
-  color: #111827;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+/* One focus treatment everywhere, keyboard only. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  /* Controls: 36px tall, 8px radius. Surfaces: 12px radius, hairline only, no shadow. */
+  .btn {
+    @apply inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium whitespace-nowrap transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-accent-strong active:bg-blue-800;
+  }
+  .btn-secondary {
+    @apply border border-gray-300 bg-white text-ink hover:bg-gray-50 active:bg-gray-100;
+  }
+  .btn-quiet {
+    @apply text-muted hover:bg-gray-100 hover:text-ink active:bg-gray-200;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:bg-red-800;
+  }
+  .icon-btn {
+    @apply inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-gray-100 hover:text-ink active:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .icon-btn[aria-pressed='true'] {
+    @apply bg-accent-soft text-accent-strong;
+  }
+  .field {
+    @apply h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-ink placeholder:text-gray-500;
+  }
+  .surface {
+    @apply rounded-xl bg-white ring-1 ring-line;
+  }
 }
 
 /* Tiptap placeholder for empty documents */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #9ca3af;
+  color: #6b7280;
   pointer-events: none;
   height: 0;
 }

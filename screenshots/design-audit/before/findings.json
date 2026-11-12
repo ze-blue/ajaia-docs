@@ -1,0 +1,157 @@
+[
+ {
+  "page": "login",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "home",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "desktop",
+  "focusTrapHolds": false,
+  "focusReturns": false
+ },
+ {
+  "page": "history",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor-zoom200",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "home-zoom200",
+  "viewport": "desktop",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "login",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "home",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "tablet",
+  "focusTrapHolds": false,
+  "focusReturns": false
+ },
+ {
+  "page": "history",
+  "viewport": "tablet",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "login",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 1
+ },
+ {
+  "page": "home",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [],
+  "unlabeled": 0
+ },
+ {
+  "page": "editor",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ },
+ {
+  "page": "share",
+  "viewport": "phone",
+  "focusTrapHolds": false,
+  "focusReturns": false
+ },
+ {
+  "page": "history",
+  "viewport": "phone",
+  "overflowX": 0,
+  "smallTargets": [
+   "Keyboard shortcuts 25x18"
+  ],
+  "unlabeled": 0
+ }
+]
