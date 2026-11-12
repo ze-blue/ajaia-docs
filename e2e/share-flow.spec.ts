@@ -9,7 +9,8 @@ async function signInAs(browser: Browser, name: string): Promise<Page> {
   const page = await context.newPage();
   await page.goto('/login');
   await page.getByRole('button', { name: new RegExp(name) }).click();
-  await expect(page.getByText(`Signed in as ${name}`)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Documents', exact: true })).toBeVisible();
+  await expect(page.getByRole('banner').getByText(name)).toBeVisible();
   return page;
 }
 
@@ -48,9 +49,11 @@ test('owner shares a document; viewer is read-only and sees live updates; upgrad
   // Bob finds it under "Shared with me" and opens it read-only.
   const bob = await signInAs(browser, 'Bob Smith');
   const sharedSection = bob.locator('section', { hasText: 'Shared with me' });
-  await expect(sharedSection.getByRole('link', { name: new RegExp(title) })).toContainText('Alice Johnson · viewer');
+  const sharedLink = sharedSection.getByRole('link', { name: new RegExp(title) });
+  await expect(sharedLink).toContainText('View only');
+  await expect(sharedLink).toContainText('Alice Johnson');
   await sharedSection.getByRole('link', { name: new RegExp(title) }).click();
-  await expect(bob.getByText('View only')).toBeVisible();
+  await expect(bob.locator('header [aria-live=polite]')).toHaveText('View only');
   await expect(bob.getByRole('toolbar', { name: 'Formatting' })).toHaveCount(0);
   await expect(bob.getByLabel('Document content')).toHaveAttribute('contenteditable', 'false');
 
