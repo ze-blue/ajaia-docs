@@ -3,9 +3,10 @@
 
 import { canDelete, canEdit, canShare, resolveRole, type Role, type ShareRole } from './access';
 import type { User } from './auth';
-import { q } from './db';
+import { type Query, q, withTransaction } from './db';
 import { AppError, forbidden, notFound } from './errors';
 import { sanitizeDocumentHtml } from './sanitize';
+import { MAX_CONTENT_CHARS } from './validation';
 
 export type DocSummary = {
   id: string;
@@ -90,50 +91,60 @@ export async function getDocument(user: User, id: string): Promise<Doc> {
 }
 
 export async function createDocument(user: User, title?: string, content = ''): Promise<string> {
-  const [row] = await q<{ id: string; title: string; content: string; version: number }>(
-    `insert into documents (title, content, owner_id, updated_by)
-     values ($1, $2, $3, $3) returning id, title, content, version`,
-    [title ?? 'Untitled document', sanitizeDocumentHtml(content), user.id],
-  );
-  await recordRevision(row.id, row.version, row.title, row.content, user.id);
-  return row.id;
+  const html = sanitizeDocumentHtml(content);
+  if (html.length > MAX_CONTENT_CHARS) {
+    throw new AppError(413, 'That file produces a document too large to edit (over 1 MB of text).');
+  }
+  return withTransaction(async (tx) => {
+    const [row] = await tx<{ id: string; title: string; content: string; version: number }>(
+      `insert into documents (title, content, owner_id, updated_by)
+       values ($1, $2, $3, $3) returning id, title, content, version`,
+      [title ?? 'Untitled document', html, user.id],
+    );
+    await recordRevision(tx, row.id, row.version, row.title, row.content, user.id, true);
+    return row.id;
+  });
 }
 
 /**
  * Saves title and/or content. Uses optimistic concurrency: the update only applies if the
  * stored version still equals `baseVersion`, otherwise 409 so the client can tell the user
- * instead of silently overwriting someone else's edits.
+ * instead of silently overwriting someone else's edits. The document row and its history
+ * entry are written in one transaction, so they can never disagree.
  */
 export async function updateDocument(
   user: User,
   id: string,
   patch: { title?: string; content?: string; baseVersion: number },
+  opts: { newRevision?: boolean } = {},
 ): Promise<{ version: number; updated_at: string }> {
   const doc = await getDocument(user, id);
   if (!canEdit(doc.role)) throw forbidden('You have view-only access to this document.');
 
-  const [row] = await q<{ version: number; updated_at: string; title: string; content: string }>(
-    `update documents
-        set title = coalesce($3, title),
-            content = coalesce($4, content),
-            version = version + 1,
-            updated_at = now(),
-            updated_by = $5
-      where id = $1 and version = $2
-      returning version, updated_at, title, content`,
-    [
-      id,
-      patch.baseVersion,
-      patch.title ?? null,
-      patch.content === undefined ? null : sanitizeDocumentHtml(patch.content),
-      user.id,
-    ],
-  );
-  if (!row) {
-    throw new AppError(409, 'This document was changed by someone else. Reload to get the latest version.');
-  }
-  await recordRevision(id, row.version, row.title, row.content, user.id);
-  return { version: row.version, updated_at: row.updated_at };
+  return withTransaction(async (tx) => {
+    const [row] = await tx<{ version: number; updated_at: string; title: string; content: string }>(
+      `update documents
+          set title = coalesce($3, title),
+              content = coalesce($4, content),
+              version = version + 1,
+              updated_at = now(),
+              updated_by = $5
+        where id = $1 and version = $2
+        returning version, updated_at, title, content`,
+      [
+        id,
+        patch.baseVersion,
+        patch.title ?? null,
+        patch.content === undefined ? null : sanitizeDocumentHtml(patch.content),
+        user.id,
+      ],
+    );
+    if (!row) {
+      throw new AppError(409, 'This document was changed by someone else. Reload to get the latest version.');
+    }
+    await recordRevision(tx, id, row.version, row.title, row.content, user.id, opts.newRevision ?? false);
+    return { version: row.version, updated_at: row.updated_at };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -146,27 +157,39 @@ export const REVISION_WINDOW_SECONDS = 60;
 /**
  * Snapshots the document after a save. Autosave fires about once a second while typing, so
  * instead of one row per burst we extend the latest revision if the same author made it within
- * the window, and start a new revision otherwise (different author, or a pause in editing).
+ * the window, and start a new revision otherwise (different author, a pause, or `forceNew`,
+ * which restores use so the state they replace stays in history).
  */
-async function recordRevision(docId: string, version: number, title: string, content: string, userId: string) {
-  const [latest] = await q<{ id: string; extend: boolean }>(
-    `select id, (created_by = $2 and created_at > now() - make_interval(secs => $3)) as extend
-       from document_revisions where document_id = $1
-      order by id desc limit 1`,
-    [docId, userId, REVISION_WINDOW_SECONDS],
-  );
-  if (latest?.extend) {
-    await q(
-      `update document_revisions set version = $2, title = $3, content = $4, updated_at = now() where id = $1`,
-      [latest.id, version, title, content],
+async function recordRevision(
+  tx: Query,
+  docId: string,
+  version: number,
+  title: string,
+  content: string,
+  userId: string,
+  forceNew: boolean,
+) {
+  if (!forceNew) {
+    const [latest] = await tx<{ id: string; extend: boolean }>(
+      `select id, (created_by = $2 and created_at > now() - make_interval(secs => $3)) as extend
+         from document_revisions where document_id = $1
+        order by id desc limit 1
+        for update`,
+      [docId, userId, REVISION_WINDOW_SECONDS],
     );
-  } else {
-    await q(
-      `insert into document_revisions (document_id, version, title, content, created_by)
-       values ($1, $2, $3, $4, $5)`,
-      [docId, version, title, content, userId],
-    );
+    if (latest?.extend) {
+      await tx(
+        `update document_revisions set version = $2, title = $3, content = $4, updated_at = now() where id = $1`,
+        [latest.id, version, title, content],
+      );
+      return;
+    }
   }
+  await tx(
+    `insert into document_revisions (document_id, version, title, content, created_by)
+     values ($1, $2, $3, $4, $5)`,
+    [docId, version, title, content, userId],
+  );
 }
 
 export async function listRevisions(user: User, id: string): Promise<Revision[]> {
@@ -201,7 +224,12 @@ export async function getRevision(
 /** Restoring is an ordinary save of old content: permission-checked, version-checked, and itself undoable. */
 export async function restoreRevision(user: User, id: string, revisionId: string, baseVersion: number) {
   const rev = await getRevision(user, id, revisionId);
-  const saved = await updateDocument(user, id, { title: rev.title, content: rev.content, baseVersion });
+  const saved = await updateDocument(
+    user,
+    id,
+    { title: rev.title, content: rev.content, baseVersion },
+    { newRevision: true }, // never fold a restore into the revision it replaces
+  );
   return { ...saved, title: rev.title, content: rev.content };
 }
 

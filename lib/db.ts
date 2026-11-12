@@ -15,7 +15,26 @@ export function getPool(): Pool {
   return g.pgPool;
 }
 
-export async function q<T = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<T[]> {
+export type Query = <T = Record<string, unknown>>(text: string, params?: unknown[]) => Promise<T[]>;
+
+export const q: Query = async (text, params = []) => {
   const result = await getPool().query(text, params);
-  return result.rows as T[];
+  return result.rows;
+};
+
+/** Runs `fn` inside BEGIN/COMMIT on one connection; rolls back if it throws. */
+export async function withTransaction<T>(fn: (tx: Query) => Promise<T>): Promise<T> {
+  const client = await getPool().connect();
+  const tx: Query = async (text, params = []) => (await client.query(text, params)).rows;
+  try {
+    await client.query('begin');
+    const result = await fn(tx);
+    await client.query('commit');
+    return result;
+  } catch (e) {
+    await client.query('rollback').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 }

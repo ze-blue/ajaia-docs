@@ -73,6 +73,21 @@ test('owner shares a document; viewer is read-only and sees live updates; upgrad
   await bob.reload();
   await expect(bob.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
 
+  // Regression (code review): Alice's change arrives in Bob's editor; Bob pressing Ctrl+Z must
+  // not undo her change (and autosave that undo over her work).
+  await editor.locator('strong').click();
+  await alice.keyboard.press('End');
+  await alice.keyboard.type(' today');
+  await expect(alice.getByText('All changes saved')).toBeVisible();
+  const bobEditor = bob.getByLabel('Document content');
+  await expect(bobEditor).toContainText('Ship it now today');
+  await bobEditor.click();
+  await bob.keyboard.press('Control+Z');
+  await bob.waitForTimeout(2000); // give a (buggy) autosave time to fire
+  await expect(bobEditor).toContainText('Ship it now today');
+  await alice.reload();
+  await expect(alice.getByLabel('Document content')).toContainText('Ship it now today');
+
   // Carol was never invited: the URL gives her nothing.
   const carol = await signInAs(browser, 'Carol Lee');
   await carol.goto(docUrl);

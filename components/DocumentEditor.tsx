@@ -63,6 +63,8 @@ export function DocumentEditor({ doc, userName }: Props) {
   const [remoteEditor, setRemoteEditor] = useState<string | null>(null); // someone saved while we had unsaved edits
   const [lastEditedBy, setLastEditedBy] = useState(doc.updated_by_name);
   const [accessLost, setAccessLost] = useState(false);
+  const [roleChangedTo, setRoleChangedTo] = useState<Role | null>(null);
+  const savedTitle = useRef(doc.title); // what the server has, for resetting a cleared title field
 
   // Refs so async callbacks always see current values without re-subscribing.
   const version = useRef(doc.version);
@@ -101,8 +103,12 @@ export function DocumentEditor({ doc, userName }: Props) {
           }
           if (!res.ok) throw new Error(body.error ?? `Save failed (${res.status})`);
           version.current = body.version;
+          if (patch.title !== undefined) savedTitle.current = patch.title;
           setLastEditedBy(userName);
           setError(null);
+          // A successful versioned save proves nobody else saved in between, so any
+          // "someone saved a newer version" warning was about our own save.
+          setRemoteEditor(null);
         } catch (e) {
           pending.current = { ...patch, ...pending.current }; // keep unsaved changes for the next attempt
           setState('error');
@@ -148,12 +154,16 @@ export function DocumentEditor({ doc, userName }: Props) {
     onUpdate: ({ editor: e }) => schedule({ content: e.getHTML() }),
   });
 
-  /** Replace editor content without triggering a save, keeping the cursor roughly in place. */
+  /**
+   * Replace editor content without triggering a save, keeping the cursor roughly in place.
+   * Kept out of undo history: otherwise Ctrl+Z would revert a collaborator's changes and the
+   * autosave would quietly write that reversion back over their work.
+   */
   const replaceContent = useCallback(
     (html: string) => {
       if (!editor) return;
       const { from, to } = editor.state.selection;
-      editor.commands.setContent(html, { emitUpdate: false });
+      editor.chain().setMeta('addToHistory', false).setContent(html, { emitUpdate: false }).run();
       const max = editor.state.doc.content.size;
       editor.commands.setTextSelection({ from: Math.min(from, max), to: Math.min(to, max) });
     },
@@ -175,6 +185,7 @@ export function DocumentEditor({ doc, userName }: Props) {
       if (hasLocalChanges() || fresh.version <= version.current) return; // user started typing meanwhile
       replaceContent(fresh.content);
       version.current = fresh.version;
+      savedTitle.current = fresh.title;
       setTitle(fresh.title);
       setLastEditedBy(fresh.updated_by_name);
       setNotice(`Updated with changes from ${fresh.updated_by_name ?? 'a collaborator'}`);
@@ -193,6 +204,14 @@ export function DocumentEditor({ doc, userName }: Props) {
         if (!res.ok) return;
         const hb = await res.json();
         setOthers(hb.active);
+        // Owner changed our access while the page was open: stop editing at once if downgraded.
+        if (hb.role !== doc.role) {
+          setRoleChangedTo(hb.role);
+          if (hb.role === 'viewer') editor.setEditable(false);
+        }
+        // While our own save is in flight the server may already be at our new version before
+        // the response arrives; comparing now would mistake our save for someone else's.
+        if (inFlight.current) return;
         if (hb.version > version.current) {
           if (!hasLocalChanges() && stateRef.current !== 'conflict') await pullLatest();
           else setRemoteEditor(hb.updated_by_name ?? 'Someone');
@@ -218,7 +237,7 @@ export function DocumentEditor({ doc, userName }: Props) {
       window.removeEventListener('pagehide', leave);
       leave();
     };
-  }, [editor, doc.id, replaceContent]);
+  }, [editor, doc.id, doc.role, replaceContent]);
 
   // ---- Small UX details -----------------------------------------------------
   useEffect(() => {
@@ -256,9 +275,15 @@ export function DocumentEditor({ doc, userName }: Props) {
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? 'Restore failed.');
+    // Anything typed while the restore was in flight is based on the replaced content;
+    // drop it rather than let a later autosave write it back over the restored version.
+    if (timer.current) clearTimeout(timer.current);
+    pending.current = {};
     replaceContent(body.content);
     version.current = body.version;
+    savedTitle.current = body.title;
     setTitle(body.title);
+    setState('saved');
     setLastEditedBy(userName);
     setNotice('Earlier version restored. You can undo this from history too.');
   }
@@ -275,10 +300,36 @@ export function DocumentEditor({ doc, userName }: Props) {
     router.refresh();
   }
 
+  /** In-app navigation skips `beforeunload`, so save (or confirm) before leaving the editor. */
+  async function leaveEditor(e: React.MouseEvent) {
+    const saveState = () => stateRef.current; // read fresh each time; it changes while we await
+    if (saveState() === 'saved') return;
+    e.preventDefault();
+    if (saveState() === 'dirty' || saveState() === 'saving') {
+      if (timer.current) clearTimeout(timer.current);
+      for (let i = 0; i < 50 && (inFlight.current || Object.keys(pending.current).length > 0); i++) {
+        if (!inFlight.current) void flush();
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      await new Promise((r) => setTimeout(r, 50)); // let the final state update reach stateRef
+    }
+    if (saveState() === 'saved' || window.confirm('Your latest changes were not saved. Leave anyway?')) {
+      router.push('/');
+    }
+  }
+
   const banner =
     accessLost
       ? { text: 'You no longer have access to this document.', action: null }
-      : remoteEditor
+      : roleChangedTo
+        ? {
+            text:
+              roleChangedTo === 'viewer'
+                ? 'The owner changed your access to view-only. Editing is disabled.'
+                : `The owner changed your access to ${roleChangedTo}. Reload to start editing.`,
+            action: 'Reload',
+          }
+        : remoteEditor
         ? {
             text: `${remoteEditor} saved a newer version while you were editing. Reload to get it (your unsaved changes here will be lost).`,
             action: 'Reload',
@@ -291,7 +342,7 @@ export function DocumentEditor({ doc, userName }: Props) {
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
-          <Link href="/" className="text-sm text-blue-700 hover:underline" title="Back to documents">
+          <Link href="/" onClick={leaveEditor} className="text-sm text-blue-700 hover:underline" title="Back to documents">
             ← Docs
           </Link>
           <input
@@ -301,7 +352,7 @@ export function DocumentEditor({ doc, userName }: Props) {
               if (e.target.value.trim()) schedule({ title: e.target.value });
             }}
             onBlur={() => {
-              if (!title.trim()) setTitle(doc.title); // an empty title is never saved
+              if (!title.trim()) setTitle(savedTitle.current); // an empty title is never saved
             }}
             readOnly={!editable}
             maxLength={200}
@@ -350,7 +401,7 @@ export function DocumentEditor({ doc, userName }: Props) {
             </button>
           </div>
         </div>
-        {editable && editor && !accessLost && <Toolbar editor={editor} />}
+        {editable && editor && !accessLost && roleChangedTo !== 'viewer' && <Toolbar editor={editor} />}
       </header>
 
       {banner && (

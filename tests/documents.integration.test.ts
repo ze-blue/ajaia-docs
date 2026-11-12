@@ -90,6 +90,13 @@ describe.skipIf(!hasDb)('documents service (Postgres)', { timeout: 60_000 }, () 
     expect(restored.content).toBe('<p>alice final</p>');
     expect((await docs.getDocument(alice, id)).content).toBe('<p>alice final</p>');
 
+    // Regression (code review): a restore made right after your own edit must not overwrite
+    // that edit's revision. Bob's "bob edit" stays in history as its own entry.
+    const afterRestore = await docs.listRevisions(alice, id);
+    expect(afterRestore).toHaveLength(3);
+    const bobRev = await docs.getRevision(alice, id, afterRestore[1].id);
+    expect(bobRev.content).toBe('<p>bob edit</p>');
+
     // Revisions of other documents are not reachable through this one.
     const other = await docs.createDocument(carol, 'Carol private');
     created.push(other);
@@ -114,6 +121,11 @@ describe.skipIf(!hasDb)('documents service (Postgres)', { timeout: 60_000 }, () 
     await docs.revokeShare(alice, id, bob.id);
     expect((await docs.heartbeat(alice, id)).active).toEqual([]); // revoked users drop off immediately
     await expect(docs.heartbeat(carol, id)).rejects.toMatchObject({ status: 404 }); // no access, no presence
+  });
+
+  it('rejects creating a document too large to ever be saved again (e.g. a huge import)', async () => {
+    const huge = `<p>${'a'.repeat(1_000_001)}</p>`;
+    await expect(docs.createDocument(alice, 'Too big', huge)).rejects.toMatchObject({ status: 413 });
   });
 
   it('only the owner can delete', async () => {
